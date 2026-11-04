@@ -25,6 +25,15 @@
   tr.unit td { background:var(--teal2) !important; color:#fff; font-weight:700; }
   td a { color:var(--teal); }
   h3 { margin:0 0 8px; color:var(--teal2); }
+  .scroller{height:calc(100vh - 52px);overflow-y:auto;border:2px solid var(--teal2);border-radius:10px;background:#fff}
+  .scroller table thead th{position:sticky;top:0;z-index:2}
+  tr.past td{color:#8a8a8a}
+  .mini{display:inline-block;background:var(--teal);color:#fff !important;text-decoration:none;padding:.2rem .55rem;border-radius:6px;font-size:.88rem;margin:1px 0}
+  .mini.off{background:#9fb5b9}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px}
+  .topbar h3{margin:0} .jump{background:var(--gold);color:#fff;border:none;border-radius:6px;padding:.3rem .7rem;font:inherit;font-size:.9rem;cursor:pointer}
+  body.scrollview .wrap{padding:8px 10px}
+
 </style>
 </head>
 <body>
@@ -71,6 +80,32 @@ fetch(CSV_URL + (CSV_URL.includes("?")?"&":"?") + "t=" + Date.now())
   const now=new Date(); now.setHours(0,0,0,0);
   const app=document.getElementById("app");
 
+  if(view==="debug"){
+    app.style.textAlign="left";
+    app.innerHTML=`<p><b>Rows read:</b> ${rows.length} &nbsp; <b>Class days found:</b> ${days.length} &nbsp; <b>Today:</b> ${now.toDateString()}</p>`+
+      `<p><b>First 6 lines of the CSV:</b></p><pre style="white-space:pre-wrap;font-size:12px">${esc(txt.split("\n").slice(0,6).join("\n"))}</pre>`+
+      (days.length?`<p><b>First day:</b> ${esc(days[0].date)} &nbsp; <b>Last day:</b> ${esc(days[days.length-1].date)}</p>`:"");
+    return;
+  }
+
+  if(view==="scroll"){
+    document.body.classList.add("scrollview"); app.style.textAlign="left";
+    const target=days.find(x=>x.d>=now&&!offDay(x.topic))||days[days.length-1];
+    const cell=(t,u)=>u?`<a class="mini" href="${esc(u)}" target="_top">${esc(t)}</a>`:(t?`<span class="mini off" title="Link coming soon">${esc(t)}</span>`:"");
+    let html=`<div class="topbar"><h3>📅 Math 2 Calendar</h3><button class="jump" onclick="jumpToday()">Jump to today</button></div><div class="scroller" id="sc"><table><thead><tr><th>Date</th><th>Topic</th><th>${esc(wuLabel)}</th><th>${esc(etLabel)}</th></tr></thead><tbody>`;
+    let lastUnit=null;
+    days.forEach(x=>{
+      if(x.unit!==lastUnit){html+=`<tr class="unit"><td colspan="4">${esc(x.unit)}</td></tr>`;lastUnit=x.unit;}
+      const cls=[x===target?"today":"",offDay(x.topic)?"off":"",x.d<now&&x!==target?"past":""].join(" ");
+      html+=`<tr class="${cls}" ${x===target?'id="target"':""}><td style="white-space:nowrap">${esc(x.date)}${x===target&&!sameDay(x.d,now)?"<br><small>next class</small>":""}</td><td>${esc(x.topic)}</td><td>${cell(x.wu,x.wuLink)}</td><td>${cell(x.et,x.etLink)}</td></tr>`;
+    });
+    app.innerHTML=html+"</tbody></table></div>";
+    window.jumpToday=()=>{const sc=document.getElementById("sc"),r=document.getElementById("target");if(!sc||!r)return;
+      const prev=r.previousElementSibling;const top=(prev?prev.offsetTop:r.offsetTop)-sc.querySelector("thead").offsetHeight;sc.scrollTop=Math.max(0,top);};
+    jumpToday(); setTimeout(jumpToday,300);
+    return;
+  }
+
   if(view==="week"){
     const mon=new Date(now); const dow=now.getDay();
     mon.setDate(now.getDate()-((dow+6)%7) + (dow===6||dow===0?7:0));   // weekends show next week
@@ -96,7 +131,7 @@ fetch(CSV_URL + (CSV_URL.includes("?")?"&":"?") + "t=" + Date.now())
   const b=button(wuLabel,pick.wu,pick.wuLink)+button(etLabel,pick.et,pick.etLink);
   app.innerHTML=`<p class="label">${label}</p><p class="sub">${esc(pick.topic)}</p>`+(b||`<p class="note">No warm up or quiz today.</p>`);
  })
- .catch(()=>{document.getElementById("app").innerHTML=`<p class="note">Today's work couldn't load. Check the Math 2 calendar in Canvas.</p>`;});
+ .catch(e=>{document.getElementById("app").innerHTML=`<p class="note">Today\'s work couldn\'t load. Check the Math 2 calendar in Canvas.</p>`+(view==="debug"?`<pre>${esc(String(e))}</pre>`:"");});
 </script>
 </body>
 </html>
