@@ -34,6 +34,10 @@
   .topbar{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px}
   .topbar h3{margin:0} .jump{background:var(--gold);color:#fff;border:none;border-radius:6px;padding:.3rem .7rem;font:inherit;font-size:.9rem;cursor:pointer}
   body.scrollview .wrap{padding:8px 10px}
+  .cibox{background:#fff;border:3px solid var(--gold);border-radius:10px;padding:12px 16px;text-align:left}
+  .cidate{margin:0 0 6px;font-size:.95rem;color:#5b6b6e}
+  .cilabel{margin:0 0 4px;font-weight:700;color:var(--teal)}
+  .ciq{margin:0;font-size:1.2rem;font-weight:600;line-height:1.4}
   .todaybox{text-align:center;background:var(--cream);border:3px solid var(--gold);border-radius:10px;padding:10px;margin:0 0 12px}
   body.both .scroller{height:70vh}
   body.both{max-width:1000px;margin:0 auto}
@@ -102,6 +106,14 @@ fetch(CSV_URL + (CSV_URL.includes("?")?"&":"?") + "t=" + Date.now())
     if(!pick)return `<p class="label">No upcoming class days on the calendar.</p>`;
     const b=button(wuLabel,pick.wu,pick.wuLink)+button(etLabel,pick.et,pick.etLink);
     return `<p class="label">${label}</p><p class="sub">${esc(pick.topic)}</p>`+(b||`<p class="note">No warm up or quiz today.</p>`);
+  }
+
+  if(view==="checkin"){
+    const t=days.find(x=>sameDay(x.d,now)&&!offDay(x.topic));
+    const nice=now.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+    app.innerHTML=`<div class="cibox"><p class="cidate">📅 ${esc(nice)}</p>`+
+      (t&&t.ci?`<p class="cilabel">Today's Check In</p><p class="ciq">${esc(t.ci)}</p>`:`<p class="ciq">There's no check in today.</p>`)+`</div>`;
+    return;
   }
 
   if(view==="scroll"||view==="both"){
