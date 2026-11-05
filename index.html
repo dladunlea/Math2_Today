@@ -70,6 +70,7 @@ function toDate(s){const m=(s||"").match(/(\d{1,2})\/(\d{1,2})/);if(!m)return nu
 const sameDay=(a,b)=>a&&b&&a.toDateString()===b.toDateString();
 const esc=s=>(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const offDay=t=>/no school/i.test(t||"");
+const pracHTML=t=>esc(t).replace(/^⭐ Extension — /,'⭐ <b>Extension:</b> ').replace(/ · ⭐ Extension — /,'<br>⭐ <b>Extension:</b> ');
 
 function button(label,title,link){
   if(link) return `<a class="btn" href="${esc(link)}" target="_top" title="${esc(title)}">${esc(label)}</a>`;
@@ -83,7 +84,7 @@ fetch(CSV_URL + (CSV_URL.includes("?")?"&":"?") + "t=" + Date.now())
   const rows=parseCSV(txt), head=rows[0]||[];
   const H=i=>(head[i]||"").trim();
   const col=(name,fallback)=>{const i=head.findIndex(h=>h.trim().toLowerCase()===name.toLowerCase());return i>=0?i:fallback;};
-  const C={wk:0,date:1,topic:col("Topic",2),wu:col("Warm Up",3),et:col("Quiz",4),wuLink:col("WU Link",5),etLink:col("ET Link",6),prac:col("Practice",-1),ci:col("Check In",-1),what:col("What",-1),why:col("Why",-1),how:col("How",-1)};
+  const C={wk:0,date:1,topic:col("Topic",2),wu:col("Warm Up",3),et:col("Quiz",4),wuLink:col("WU Link",5),etLink:col("ET Link",6),prac:col("Practice",-1),ci:col("Exit Ticket",col("Check In",-1)),what:col("What",-1),why:col("Why",-1),how:col("How",-1)};
   const wuLabel=H(C.wu)||"Warm Up", etLabel=H(C.et)||"Quiz";
   let unit="";
   const days=[], units={};
@@ -130,7 +131,7 @@ fetch(CSV_URL + (CSV_URL.includes("?")?"&":"?") + "t=" + Date.now())
     const t=days.find(x=>sameDay(x.d,now)&&!offDay(x.topic));
     const nice=now.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
     app.innerHTML=`<div class="cibox"><p class="cidate">📅 ${esc(nice)}</p>`+
-      (t&&t.ci?`<p class="cilabel">Today's Check In</p><p class="ciq">${esc(t.ci)}</p>`:`<p class="ciq">There's no check in today.</p>`)+`</div>`;
+      (t&&t.ci?`<p class="cilabel">Today's Exit Ticket</p><p class="ciq">${esc(t.ci)}</p>`:`<p class="ciq">There's no exit ticket today.</p>`)+`</div>`;
     return;
   }
 
@@ -138,12 +139,12 @@ fetch(CSV_URL + (CSV_URL.includes("?")?"&":"?") + "t=" + Date.now())
     document.body.classList.add("scrollview"); if(view==="both")document.body.classList.add("both"); app.style.textAlign="left";
     const target=days.find(x=>x.d>=now&&!offDay(x.topic))||days[days.length-1];
     const cell=(t,u)=>u?`<a class="mini" href="${esc(u)}" target="_top">${esc(t)}</a>`:(t?`<span class="mini off" title="Link coming soon">${esc(t)}</span>`:"");
-    let html=`<div class="topbar"><h3>📅 Math 2 Calendar</h3><button class="jump" onclick="jumpToday()">Jump to today</button></div><div class="scroller" id="sc"><table><thead><tr><th>Date</th><th>Topic</th><th>${esc(wuLabel)}</th><th>${esc(etLabel)}</th><th>Practice</th><th>Check In</th></tr></thead><tbody>`;
+    let html=`<div class="topbar"><h3>📅 Math 2 Calendar</h3><button class="jump" onclick="jumpToday()">Jump to today</button></div><div class="scroller" id="sc"><table><thead><tr><th>Date</th><th>Topic</th><th>${esc(wuLabel)}</th><th>${esc(etLabel)}</th><th>Practice</th><th>Exit Ticket</th></tr></thead><tbody>`;
     let lastUnit=null;
     days.forEach(x=>{
       if(x.unit!==lastUnit){html+=`<tr class="unit"><td colspan="6">${esc(x.unit)}</td></tr>`;lastUnit=x.unit;}
       const cls=[x===target?"today":"",offDay(x.topic)?"off":"",x.d<now&&x!==target?"past":""].join(" ");
-      html+=`<tr class="${cls}" ${x===target?'id="target"':""}><td style="white-space:nowrap">${esc(x.date)}${x===target&&!sameDay(x.d,now)?"<br><small>next class</small>":""}</td><td>${esc(x.topic)}</td><td>${cell(x.wu,x.wuLink)}</td><td>${cell(x.et,x.etLink)}</td><td class="sm">${esc(x.prac)}</td><td class="sm">${esc(x.ci)}</td></tr>`;
+      html+=`<tr class="${cls}" ${x===target?'id="target"':""}><td style="white-space:nowrap">${esc(x.date)}${x===target&&!sameDay(x.d,now)?"<br><small>next class</small>":""}</td><td>${esc(x.topic)}</td><td>${cell(x.wu,x.wuLink)}</td><td>${cell(x.et,x.etLink)}</td><td class="sm">${pracHTML(x.prac)}</td><td class="sm">${esc(x.ci)}</td></tr>`;
     });
     app.innerHTML=(view==="both"?`<div class="todaybox">${buttonsHTML()}</div>`:"")+html+"</tbody></table></div>";
     window.jumpToday=()=>{const sc=document.getElementById("sc"),r=document.getElementById("target");if(!sc||!r)return;
@@ -157,13 +158,13 @@ fetch(CSV_URL + (CSV_URL.includes("?")?"&":"?") + "t=" + Date.now())
     mon.setDate(now.getDate()-((dow+6)%7) + (dow===6||dow===0?7:0));   // weekends show next week
     const end=new Date(mon); end.setDate(mon.getDate()+12);           // this week + next week
     const list=days.filter(x=>x.d>=mon && x.d<=end);
-    let html=`<h3>📅 This Week &amp; Next Week</h3><table><thead><tr><th>Date</th><th>Topic</th><th>${esc(wuLabel)}</th><th>${esc(etLabel)}</th><th>Practice</th><th>Check In</th></tr></thead><tbody>`;
+    let html=`<h3>📅 This Week &amp; Next Week</h3><table><thead><tr><th>Date</th><th>Topic</th><th>${esc(wuLabel)}</th><th>${esc(etLabel)}</th><th>Practice</th><th>Exit Ticket</th></tr></thead><tbody>`;
     let lastUnit="";
     list.forEach(x=>{
       if(x.unit!==lastUnit){html+=`<tr class="unit"><td colspan="6">${esc(x.unit)}</td></tr>`;lastUnit=x.unit;}
       const cls=sameDay(x.d,now)?"today":(offDay(x.topic)?"off":"");
       const l=(t,u)=>u?`<a href="${esc(u)}" target="_top">${esc(t)}</a>`:esc(t);
-      html+=`<tr class="${cls}"><td>${esc(x.date)}</td><td>${esc(x.topic)}</td><td>${l(x.wu,x.wuLink)}</td><td>${l(x.et,x.etLink)}</td><td class="sm">${esc(x.prac)}</td><td class="sm">${esc(x.ci)}</td></tr>`;
+      html+=`<tr class="${cls}"><td>${esc(x.date)}</td><td>${esc(x.topic)}</td><td>${l(x.wu,x.wuLink)}</td><td>${l(x.et,x.etLink)}</td><td class="sm">${pracHTML(x.prac)}</td><td class="sm">${esc(x.ci)}</td></tr>`;
     });
     app.innerHTML=html+"</tbody></table>"+(list.length?"":`<p class="note">No class days on the calendar for these two weeks.</p>`);
     return;
