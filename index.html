@@ -21,8 +21,9 @@
   header.top p{margin:2px 0 0;font-weight:600}
   .card{background:var(--cream);border:3px solid var(--teal);border-radius:14px;padding:16px}
   .card h2{margin:0 0 10px;color:var(--teal-d);font-size:1.2em;font-weight:800}
-  .layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;margin-top:16px;align-items:start}
-  .main{display:grid;gap:16px;min-width:0}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;margin-top:16px;align-items:stretch}
+  .main{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .main > #today{flex:1}
   @media (max-width:860px){.layout{grid-template-columns:1fr}}
 
   /* Unit */
@@ -59,8 +60,9 @@
   .yay{text-align:center;font-weight:800;color:var(--ok);margin:10px 0 0}
 
   /* Side */
-  .side{display:grid;gap:16px;min-width:0}
-  .side .cal{max-height:min(560px,62vh)}
+  .side{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .side .cal-card{flex:1;contain:size;min-height:360px;display:flex;flex-direction:column}
+  .side .cal-card .cal{flex:1;min-height:0;max-height:none}
   .pt{background:#fff;border-radius:10px;padding:12px;margin-bottom:10px}
   .pt:last-child{margin-bottom:0}
   .pt .lbl{font-size:.8em;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
@@ -308,7 +310,6 @@ function wireTasks(day){
 
 /* ---------- Confetti when every required task is checked ---------- */
 function confetti(){
-  if(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const c=document.createElement('canvas');
   c.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999';
   document.body.appendChild(c);
@@ -361,11 +362,11 @@ function ptBox(groups, todayIso, today){
 }
 
 function calendar(model, focus, todayIso){
-  let html=`<section class="card" aria-label="Calendar">
+  let html=`<section class="card cal-card" aria-label="Calendar">
     <div class="cal-head"><h2>🗓️ Calendar</h2><button class="btn light" id="jump" type="button">Jump to today</button></div>
     <div class="cal" id="cal">`;
   for(const s of model.sections){
-    html+=`<div class="sec">${esc(shortName(s.name))}${s.question?`<small>${esc(s.question)}</small>`:''}</div>`;
+    html+=`<div class="secwrap"><div class="sec">${esc(shortName(s.name))}${s.question?`<small>${esc(s.question)}</small>`:''}</div>`;
     for(const d of s.days){
       if(d.startsWeek) html+=`<div class="wk">${esc(d.week)}</div>`;
       const cls=['row', d.iso<todayIso?'past':'', d===focus?'today':''].join(' ');
@@ -375,6 +376,7 @@ function calendar(model, focus, todayIso){
       const cp = d.cp ? ` <span class="chip cp">📝 ${esc(d.cp)}</span>` : '';
       html+=`<div class="${cls}" data-iso="${d.iso}"><span class="d">${esc(d.label)}</span><span>${topic}${cp}</span></div>`;
     }
+    html+='</div>';
   }
   return html+'</div></section>';
 }
@@ -382,8 +384,8 @@ function calendar(model, focus, todayIso){
 function jumpToToday(smooth){
   const cal=document.getElementById('cal'); if(!cal) return;
   const row=cal.querySelector('.row.today'); if(!row) return;
-  const secH=(cal.querySelector('.sec')||{}).offsetHeight||0;
-  cal.scrollTo({top:row.offsetTop-secH-28, behavior:smooth?'smooth':'auto'});
+  const sec=row.closest('.secwrap'); const secH=sec?sec.querySelector('.sec').offsetHeight:0;
+  cal.scrollTo({top:row.offsetTop-secH-6, behavior:smooth?'smooth':'auto'});
 }
 
 async function main(){
