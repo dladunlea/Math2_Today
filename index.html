@@ -296,13 +296,43 @@ function wireTasks(day){
     const prog=document.getElementById('prog'), fill=document.getElementById('barfill'), yay=document.getElementById('yay');
     if(prog) prog.textContent=`${n} of ${req.length} done`;
     if(fill) fill.style.width=(req.length?100*n/req.length:0)+'%';
-    if(yay) yay.hidden = !(req.length && n===req.length);
+    const complete = !!(req.length && n===req.length);
+    if(yay) yay.hidden = !complete;
+    return complete;
   };
   items.forEach(li=>{
     const cb=li.querySelector('input'); cb.checked=!!done[li.dataset.id]; li.classList.toggle('done',cb.checked);
-    cb.addEventListener('change',()=>{ done[li.dataset.id]=cb.checked; li.classList.toggle('done',cb.checked); store(key,JSON.stringify(done)); update(); });
+    cb.addEventListener('change',()=>{ const was=update(); done[li.dataset.id]=cb.checked; li.classList.toggle('done',cb.checked); store(key,JSON.stringify(done)); if(update() && !was) confetti(); });
   });
   update();
+}
+
+/* ---------- Confetti when every required task is checked ---------- */
+function confetti(){
+  if(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const c=document.createElement('canvas');
+  c.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999';
+  document.body.appendChild(c);
+  const ctx=c.getContext('2d'), dpr=window.devicePixelRatio||1;
+  const W=c.width=innerWidth*dpr, H=c.height=innerHeight*dpr;
+  const colors=['#4c8c8c','#a0e7e5','#e39b4f','#7a9fd6','#f6c445','#3f9a6b','#ff7f9e'];
+  const bursts=[[W*.5,H*.55],[W*.2,H*.7],[W*.8,H*.7]];
+  const parts=[];
+  bursts.forEach(([x,y])=>{ for(let i=0;i<70;i++){
+    const a=-Math.PI/2+(Math.random()-.5)*Math.PI*1.1, v=(8+Math.random()*12)*dpr;
+    parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,w:(6+Math.random()*6)*dpr,h:(3+Math.random()*4)*dpr,
+      r:Math.random()*6,vr:(Math.random()-.5)*.4,col:colors[i%colors.length]});
+  }});
+  const start=performance.now();
+  (function frame(t){
+    const age=t-start; ctx.clearRect(0,0,W,H);
+    for(const p of parts){
+      p.vy+=0.35*dpr; p.vx*=0.99; p.vy*=0.99; p.x+=p.vx; p.y+=p.vy; p.r+=p.vr;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.r); ctx.globalAlpha=Math.max(0,1-age/3200);
+      ctx.fillStyle=p.col; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore();
+    }
+    if(age<3200) requestAnimationFrame(frame); else c.remove();
+  })(start);
 }
 
 function ptBox(groups, todayIso, today){
